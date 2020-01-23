@@ -12,11 +12,17 @@
 
 I've used BTC-USDT.CISCALC as the default ticker. You can use any code (suggested) I wrote here to integrate trading view into CIS app. You will not need any API other than
 ours because it fetches data from our API and maps it in the front-end. I did not use React before, so I don't know how to get ticker from user state or query path.
+
+You can dynamically change the ticker drawn on the chart by calling setSymbol() on tv_widget instance. So let's say user is in BTC page and you show the user 
+BTC/USDT chart when user change the exchange currency (e.g from USDT to TRY) you can use the setSymbol() without reloading the whole chart.  
+<pre>
+this.tvWidget.setSymbol(this._symbol, this.tvWidget.chart().resolution(), null);
+</pre>
  
 For to see, how this behaves in a regular application (implemented with Angular) please visit the http://207.180.195.188/wsclient/table 
 and select a coin from table (e.g http://207.180.195.188/wsclient/table/BTC). In the coin window, you can change exchange from upper right corner (e.g USDT to ETH) to see
 how the chart behaves. I can also share my Angular code with you if you want. 
 
-There is an extensive documentation of this trading view library in https://github.com/RJPhillips01/charting_library/wiki, this is a link to 
-private repository (where the original charting_library resides). If you don't have access you can contact me.
+There is an extensive documentation of this trading view library in https://github.com/RJPhillips01/charting_library/wiki
+(where the original charting_library resides). Please read it. The repository is private so If you don't have access already (You or Hakan should have access) please contact me.
 

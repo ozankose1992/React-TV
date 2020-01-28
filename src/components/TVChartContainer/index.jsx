@@ -18,16 +18,21 @@ export class TVChartContainer extends React.PureComponent {
 		autosize: true
 	};
 
+	// Reference to widget object
 	tvWidget = null;
-
+    // Service for fetching data
 	apiService = new HttpService();
-	dataFeed;
+	// Data feed reference
+	_datafeed;
+	// Default timezone of the chart
 	timezone = 'Etc/UTC';
-	supportedResolutions = ['1', '1D'];
-	config = {
-		supported_resolutions: this.supportedResolutions
-	};
 
+	// We are saying our feed supports these aggregations
+	intradayMultipliers = ['1', '5', '15', '30', '60'];
+	// Supported resolutions (No following abbr means minutes)
+	config = {
+		supported_resolutions: ['1', '5', '15', '30', '60', '1D']
+	};
 
 	componentDidMount() {
 
@@ -36,86 +41,51 @@ export class TVChartContainer extends React.PureComponent {
 				setTimeout(() => cb(this.config), 0);
 
 			},
-			searchSymbols: (userInput, exchange, symbolType, onResultReadyCallback) => {},
+			searchSymbols: (userInput, exchange, symbolType, onResultReadyCallback) => {
+				this.apiService.searchSymbol(this.props.symbol.split(/[-.]/)[1], userInput).then(res => {
+					onResultReadyCallback(res);
+				});
+			},
 			resolveSymbol: (symbolName, onSymbolResolvedCallback, onResolveErrorCallback) => {
 				const splitData = symbolName.split(/[-.]/);
 
 				const symbolStub = {
-					name: symbolName,
-					description: `${splitData[0]}/${splitData[1]}`,
-					type: 'crypto',
-					session: '24x7',
-					timezone: this.timezone,
-					ticker: symbolName,
-					exchange: splitData[0],
-					minmov: 1,
-					pricescale: 100000000,
-					has_intraday: true,
-					has_no_volume: true,
-					has_daily: true,
-					expired: true,
-					expiration_date: 1579523940,
-					intraday_multipliers: ['1'],
-					supported_resolutions:  this.supportedResolutions,
-					volume_precision: 8,
-					full_name: 'full_name',
-					listed_exchange: 'listed_exchange',
-					format: 'price'
+					name: symbolName, // Name of the symbol
+					ticker: symbolName, // Unique identifier for the symbol to fetch data
+					description: `${splitData[0]}/${splitData[1]}`, // Chart Legend
+					type: 'crypto', // Type of the symbol (Don't know what is useful for maybe grouping symbols)
+					session: '24x7', // Special session string for crypto
+					exchange: '', // Exchange of the symbol (e.g Bitfinex), shown in legend
+					listed_exchange: '', // Listed exchange same logic above required
+					timezone: this.timezone, // Timezone of the chart
+					format: 'price', // Formats decimal or fractional numbers based on params (minmov, pricescale)
+					minmov: 1, // Did not understand what this is...
+					pricescale: 100, // Number of decimal places 10's power (e.g 1.01 => 100, 1.005 => 1000)
+					has_intraday: true, // E.g 1 minute, 2 minute resolutions...
+					supported_resolutions:  this.config.supported_resolutions, // Symbol specific resolutions
+					intraday_multipliers: this.intradayMultipliers, // Aggregate multipliers that our data feed supports
+					has_seconds: false, // If we are supporting second resolutions
+					seconds_multipliers: [], // Second aggregate multipliers
+					has_daily: true,  // Indicates if data feed supports daily aggregates (only 1 daily requested by TV)
+					has_weekly_and_monthly: false, // Indicates if data feed supports these aggregates (only 1 weekly/yearly requested by TV)
+					has_empty_bars: true, // Fill chart with empty bars for empty data
+					has_no_volume: true, // Indicates if data has volume values
+					volume_precision: 2, // Decimal places for volume (2 values after comma)
+					full_name: symbolName // Not documented but required
 				};
 
-				symbolStub.pricescale = 100;
 				setTimeout(() => {
 					onSymbolResolvedCallback(symbolStub);
 				}, 0);
-
-
 			},
 			getBars: (symbolInfo, resolution, from, to, onHistoryCallback, onErrorCallback, firstDataRequest) => {
-				// console.log('function args',arguments)
-				// console.log(`Requesting bars between ${new Date(from * 1000).toISOString()} and ${new Date(to * 1000).toISOString()}`)
-				console.log("Get bars called...", resolution, from, to);
-				if (resolution === '1D') {
-					resolution = '1440';
-				}
-				if (resolution === '3D') {
-					resolution = '4320';
-				}
-
-				// Sending 2000 default limit
-				this.apiService.getTSData(symbolInfo.name, resolution, firstDataRequest ? null : from, to).then((data) => {
-					// if (data.Response && data.Response === 'Error') {
-					//   console.log('CryptoCompare data fetching error :', data.Message);
-					//   onHistoryCallback([], {noData: true});
-					// }
-
-
-					if (data['data'] && data['data'].length) {
-						const indexMap = {};
-						data['fields'].forEach((item, index) => {
-							indexMap[item] = index;
-						});
-
-						const bars = data['data'].map(el => {
-							return {
-								time: el[indexMap['ts']],
-								low: el[indexMap['l']],
-								high: el[indexMap['h']],
-								open: el[indexMap['o']],
-								close: el[indexMap['c']],
-								volume: null
-							};
-						});
-						// if (firstDataRequest) {
-						//   const lastBarEl = bars[0];
-						//   history[symbolInfo.name] = { lastBar : lastBarEl};
-						//
-						// }
-
-						if (bars.length) {
-							onHistoryCallback(bars.reverse(), {noData: false});
-						} else {
-							onHistoryCallback([], {noData: true});
-						}
+				// Do not feed from/to if this is the first request
+				const paramFrom = firstDataRequest ? null : from;
+				const paramTo = firstDataRequest ? null : to;
+				this.apiService.getTSData(symbolInfo.name, resolution, paramFrom, paramTo).then(bars => {
+					// If there are bars to show send to history callback and let TV handle the draw
+					if (bars && bars.length) {
+						onHistoryCallback(bars, {noData: false});
 					} else {
 						onHistoryCallback([], {noData: true});
 					}
@@ -128,19 +98,21 @@ export class TVChartContainer extends React.PureComponent {
 				// this.socketService.unsubscribeBars(subscriberUID)
 			},
 			calculateHistoryDepth: (resolution, resolutionBack, intervalBack) => {
-				console.log("On History Callback...")
-				console.log('resolution ' + resolution);
-				if (resolution === '1D') {
-					return {
-						resolutionBack: 'M',
-						intervalBack: 6
-					};
-				}
-				if (resolution === '1') {
+				// Requesting daily resolution, fetch 12 months worth of daily data
+				if (resolution.endsWith('D')) {
 					return {
 						resolutionBack: 'D',
-						intervalBack: 1
-					}
+						intervalBack: 1440 // Too keep same limit value with intraday resolutions
+					};
+				}
+
+				// If resolution only contains digits scale wrt base 1 day worth of minutes
+				if (/^\d+$/.test(resolution)) {
+					const minInt = parseInt(resolution);
+					return {
+						resolutionBack: 'D',
+						intervalBack: 1 * minInt // Base is 1 day for 1 minute data
+					};
 				}
 
 				return undefined;
@@ -148,24 +120,28 @@ export class TVChartContainer extends React.PureComponent {
 		};
 
 		const widgetOptions = {
-			symbol: this.props.symbol,
-			// BEWARE: no trailing slash is expected in feed URL
-			datafeed: this.dataFeed,
-			interval: this.props.interval,
-			container_id: this.props.containerId,
-			library_path: this.props.libraryPath,
-			locale: 'en',
-			disabled_features: ['use_localstorage_for_settings', 'symbol_info',  'property_pages', 'display_market_status',
-				'context_menus', 'edit_buttons_in_legend', 'header_symbol_search', 'symbol_search_hot_key', 'header_widget_dom_node',
-				'header_settings', 'header_compare', 'header_undo_redo', 'header_saveload', 'left_toolbar',
-				'border_around_the_chart', 'control_bar', 'timeframes_toolbar'],
-			theme: 'Dark',
-			charts_storage_url: this.props.chartsStorageUrl,
-			charts_storage_api_version: this.props.chartsStorageApiVersion,
-			client_id: this.props.clientId,
-			user_id: this.props.userId,
-			fullscreen: this.props.fullscreen,
-			autosize: this.props.autosize
+			symbol: this.props.symbol, // Default symbol of the chart (We don't have default symbol)
+			interval: this.props.interval, // Default interval of the chart (1D)
+			container_id: this.props.containerId, // Id of container DOM element
+			datafeed: this.dataFeed, // Datafeed that will be used to provide data (has special interface check docs)
+			library_path: this.props.libraryPath, // Path to the TV library
+			fullscreen: this.props.fullscreen, // Enable full screen mode
+			autosize: this.props.autosize, // Let chart to autosize itself wrt changes
+			locale: 'en', // Chart locale
+			disabled_features: ['border_around_the_chart', 'header_symbol_search',
+				'symbol_search_hot_key', 'header_saveload', 'header_undo_redo'], // Features that are disabled check docs
+			theme: 'Dark', // Default theme of the chart
+			charts_storage_url: this.props.chartsStorageUrl, // Handle user saved charts
+			charts_storage_api_version: this.props.chartsStorageApiVersion, // Handle user saved charts
+			client_id: this.props.clientId, // Handle user saved charts
+			user_id: this.props.userId, // Handle user saved charts
+			time_frames: [ // Supported timeframes (These are default)
+				{ text: "1y", resolution: "D", description: "1 Year" },
+				{ text: "3m", resolution: "60", description: "3 Months" },
+				{ text: "1m", resolution: "30", description: "1 Month" },
+				{ text: "5d", resolution: "5", description: "5 Day" },
+				{ text: "1d", resolution: "1", description: "1 Day" }
+			]
 		};
 
 		const tvWidget = new widget(widgetOptions);

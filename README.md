@@ -26,3 +26,19 @@ how the chart behaves. I can also share my Angular code with you if you want.
 There is an extensive documentation of this trading view library in https://github.com/RJPhillips01/charting_library/wiki
 (where the original charting_library resides). Please read it. The repository is private so If you don't have access already (You or Hakan should have access) please contact me.
 
+### Changes 28.01.2019
+Alican I saw you already made some of the changes listed here so you can ignore them.
+
+Following updates are done on the demo:
+
+- Most of the mapping logic is moved from getBars(in index.jsx) function to httpService functions. So those functions need update. 
+- Compare symbol functionality is added and users now can search symbols when click "Compare" and navigate to "Add Symbol" page.(see httpService.jsx and searchSymbols in index.jsx)
+- Most of the redundant code are removed and comments are added for configurations.
+- onHistoryCallback logic is changed
+- Some global parameters are added (intraday_multipliers) and some are updated/renamed.
+- widgetOptions parameter is commented and updated (Some features enabled)
+- symbolStub in resolveSymbol functions is commented and updated (Some features are enabled, some features are disabled)
+
+If you will do the changes one by one (not by directly copying) I highly recommend you check the changes with git diff or some other tool. Otherwise you can always put copy the code and apply the required changes on your side (for dynamic symbols and container fitting)
+
+

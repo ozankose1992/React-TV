@@ -5,7 +5,7 @@ import {widget} from '../../charting_library/charting_library.min';
 
 export class TVChartContainer extends React.PureComponent {
 	static defaultProps = {
-		symbol: 'BTC-USDT.CISCALC',
+		symbol: 'VET-USDT.CISCALC',
 		interval: '1D',
 		containerId: 'tv_chart_container',
 		datafeedUrl: 'https://demo_feed.tradingview.com',
@@ -47,36 +47,34 @@ export class TVChartContainer extends React.PureComponent {
 				});
 			},
 			resolveSymbol: (symbolName, onSymbolResolvedCallback, onResolveErrorCallback) => {
-				const splitData = symbolName.split(/[-.]/);
-
-				const symbolStub = {
-					name: symbolName, // Name of the symbol
-					ticker: symbolName, // Unique identifier for the symbol to fetch data
-					description: `${splitData[0]}/${splitData[1]}`, // Chart Legend
-					type: 'crypto', // Type of the symbol (Don't know what is useful for maybe grouping symbols)
-					session: '24x7', // Special session string for crypto
-					exchange: '', // Exchange of the symbol (e.g Bitfinex), shown in legend
-					listed_exchange: '', // Listed exchange same logic above required
-					timezone: this.timezone, // Timezone of the chart
-					format: 'price', // Formats decimal or fractional numbers based on params (minmov, pricescale)
-					minmov: 1, // Did not understand what this is...
-					pricescale: 100, // Number of decimal places 10's power (e.g 1.01 => 100, 1.005 => 1000)
-					has_intraday: true, // E.g 1 minute, 2 minute resolutions...
-					supported_resolutions:  this.config.supported_resolutions, // Symbol specific resolutions
-					intraday_multipliers: this.intradayMultipliers, // Aggregate multipliers that our data feed supports
-					has_seconds: false, // If we are supporting second resolutions
-					seconds_multipliers: [], // Second aggregate multipliers
-					has_daily: true,  // Indicates if data feed supports daily aggregates (only 1 daily requested by TV)
-					has_weekly_and_monthly: false, // Indicates if data feed supports these aggregates (only 1 weekly/yearly requested by TV)
-					has_empty_bars: true, // Fill chart with empty bars for empty data
-					has_no_volume: true, // Indicates if data has volume values
-					volume_precision: 2, // Decimal places for volume (2 values after comma)
-					full_name: symbolName // Not documented but required
-				};
-
-				setTimeout(() => {
+				this.apiService.loadLatestPrice(symbolName).then(price => {
+					const splitData = symbolName.split(/[-.]/);
+					const symbolStub = {
+						name: symbolName, // Name of the symbol
+						ticker: symbolName, // Unique identifier for the symbol to fetch data
+						description: `${splitData[0]}/${splitData[1]}`, // Chart Legend
+						type: 'crypto', // Type of the symbol (Don't know what is useful for maybe grouping symbols)
+						session: '24x7', // Special session string for crypto
+						exchange: '', // Exchange of the symbol (e.g Bitfinex), shown in legend
+						listed_exchange: '', // Listed exchange same logic above required
+						timezone: this.timezone, // Timezone of the chart
+						format: 'price', // Formats decimal or fractional numbers based on params (minmov, pricescale)
+						minmov: 1, // Did not understand what this is...
+						pricescale: this.decimalDetector(price), // Number of decimal places 10's power (e.g 1.01 => 100, 1.005 => 1000)
+						has_intraday: true, // E.g 1 minute, 2 minute resolutions...
+						supported_resolutions:  this.config.supported_resolutions, // Symbol specific resolutions
+						intraday_multipliers: this.intradayMultipliers, // Aggregate multipliers that our data feed supports
+						has_seconds: false, // If we are supporting second resolutions
+						seconds_multipliers: [], // Second aggregate multipliers
+						has_daily: true,  // Indicates if data feed supports daily aggregates (only 1 daily requested by TV)
+						has_weekly_and_monthly: false, // Indicates if data feed supports these aggregates (only 1 weekly/yearly requested by TV)
+						has_empty_bars: true, // Fill chart with empty bars for empty data
+						has_no_volume: true, // Indicates if data has volume values
+						volume_precision: 2, // Decimal places for volume (2 values after comma)
+						full_name: symbolName // Not documented but required
+					};
 					onSymbolResolvedCallback(symbolStub);
-				}, 0);
+				});
 			},
 			getBars: (symbolInfo, resolution, from, to, onHistoryCallback, onErrorCallback, firstDataRequest) => {
 				// Do not feed from/to if this is the first request
@@ -131,6 +129,16 @@ export class TVChartContainer extends React.PureComponent {
 			disabled_features: ['border_around_the_chart', 'header_symbol_search',
 				'symbol_search_hot_key', 'header_saveload', 'header_undo_redo'], // Features that are disabled check docs
 			theme: 'Dark', // Default theme of the chart
+			custom_css_url: 'https://cisfunctionsstorage.blob.core.windows.net/tv-css/custom.css', // Design css url
+			overrides: { // Chart colors
+				'editorFontsList': '["Roboto"]',
+				'paneProperties.background': '#292E33',
+				'paneProperties.vertGridProperties.color': '#41464b',
+				'paneProperties.horzGridProperties.color': '#41464b',
+				'paneProperties.crossHairProperties.color': '#989898',
+				'paneProperties.crossHairProperties.width': 1,
+			},
+			loading_screen: { backgroundColor: '#292E33' }, // Loading screen color
 			charts_storage_url: this.props.chartsStorageUrl, // Handle user saved charts
 			charts_storage_api_version: this.props.chartsStorageApiVersion, // Handle user saved charts
 			client_id: this.props.clientId, // Handle user saved charts
@@ -150,6 +158,20 @@ export class TVChartContainer extends React.PureComponent {
 		tvWidget.onChartReady(() => {
 			// Do Something On Chart Ready
 		});
+	}
+
+	/**
+	 * Detect how many decimal places a symbol need
+	 *
+	 * @param num decimal place on number
+	 * @param multiplier Multiplier for decimal place
+	 */
+	decimalDetector(num, multiplier = 1) {
+		if (num > 1 || num === 0) {
+			return 100 * multiplier;
+		} else {
+			return this.decimalDetector(num * multiplier, multiplier * 10);
+		}
 	}
 
 	componentWillUnmount() {

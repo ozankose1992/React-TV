@@ -87,4 +87,27 @@ export class HttpService {
         );
     }
 
+
+    /**
+     * Loads latest price of the pair
+     *
+     * @param pair Pair to fetch
+     */
+    loadLatestPrice(pair) {
+        const query = 'symbol=' + pair + '&interval=1d&limit=1';
+        return fetch(this.getTSPath() + '?' + query).then(res => res.json()).then( data => {
+            // Get the low value of the data
+            if (data['data'] && data['data'].length) {
+                // Generate field index map (which array element belongs to which field)
+                const indexMap = {};
+                data['fields'].forEach((item, index) => {
+                    indexMap[item] = index;
+                });
+                return data['data'][0][indexMap['l']];
+            } else {
+                return [];
+            }
+        });
+    }
+
 }

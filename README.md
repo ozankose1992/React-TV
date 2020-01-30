@@ -41,4 +41,14 @@ Following updates are done on the demo:
 
 If you will do the changes one by one (not by directly copying) I highly recommend you check the changes with git diff or some other tool. Otherwise you can always put copy the code and apply the required changes on your side (for dynamic symbols and container fitting)
 
+### Changes 31.01.2019
+Design of the chart is arranged to match with design of application. Decimal places are arranged.
+
+Following updates are done on the demo:
+
+- Before generating symbol information (see resolveSymbol function) latest price (loadLatestPrice is httpService) is fetched and feed to the
+decimalDetector (it detects how many decimal places we should use e.g VET needs 100000 decimal places)
+- Design of the configurable components linked to external css (see custom_css_url in widgetOptions)
+- Chart colors is fed from widget constructor (see overrides in widgetOptions)
+- Loading screen color is fed from widget constructor (see loading_screen in widgetOptions) 
 

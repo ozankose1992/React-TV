@@ -52,3 +52,7 @@ decimalDetector (it detects how many decimal places we should use e.g VET needs 
 - Chart colors is fed from widget constructor (see overrides in widgetOptions)
 - Loading screen color is fed from widget constructor (see loading_screen in widgetOptions) 
 
+### Changes 04.02.2019
+Symbols are now case-sensitive; not forced to be uppercase.
+
+- Add 'uppercase_instrument_names' to disabled_features list. 

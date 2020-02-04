@@ -126,7 +126,7 @@ export class TVChartContainer extends React.PureComponent {
 			fullscreen: this.props.fullscreen, // Enable full screen mode
 			autosize: this.props.autosize, // Let chart to autosize itself wrt changes
 			locale: 'en', // Chart locale
-			disabled_features: ['border_around_the_chart', 'header_symbol_search',
+			disabled_features: ['border_around_the_chart', 'header_symbol_search', 'uppercase_instrument_names',
 				'symbol_search_hot_key', 'header_saveload', 'header_undo_redo'], // Features that are disabled check docs
 			theme: 'Dark', // Default theme of the chart
 			custom_css_url: 'https://cisfunctionsstorage.blob.core.windows.net/tv-css/custom.css', // Design css url
